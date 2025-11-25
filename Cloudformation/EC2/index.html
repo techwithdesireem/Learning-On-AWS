@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Learning Project - HerDevWorks by Desiree M</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0a;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container {
+            background: #1a1a1a;
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(255, 105, 180, 0.3);
+            max-width: 900px;
+            margin: 0 auto;
+            border: 2px solid #ff1493;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .profile-section {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .profile-image {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 5px solid #ff69b4;
+            box-shadow: 0 10px 30px rgba(255, 105, 180, 0.5);
+        }
+        .profile-info {
+            flex: 1;
+            min-width: 300px;
+        }
+        h1 {
+            color: #ff1493;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            animation: fadeIn 1s ease-in;
+            text-shadow: 0 0 20px rgba(255, 20, 147, 0.5);
+        }
+        h2 {
+            color: #ff69b4;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+        }
+        h3 {
+            color: #ff1493;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #ff1493;
+            padding-bottom: 10px;
+        .learning-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ff1493 0%, #ff69b4 100%);
+            color: #000;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(255, 20, 147, 0.6);
+        }
+        .info-box {
+            background: #2a2a2a;
+            border-left: 5px solid #ff1493;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            border: 1px solid #333;
+        }
+        .info-box strong {
+            color: #ff69b4;
+        }
+        .tech-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .badge {
+            display: inline-block;
+            background: #ff1493;
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 0.9em;
+            box-shadow: 0 0 10px rgba(255, 20, 147, 0.4);
+        }
+        .contact-section {
+            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+            color: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 40px;
+            border: 2px solid #ff1493;
+            box-shadow: 0 0 30px rgba(255, 20, 147, 0.3);
+        }
+        .contact-section h3 {
+            color: #ff1493;
+            border-bottom: 2px solid #ff1493;
+        }
+        .contact-section p {
+            color: #e0e0e0;
+        }
+        .contact-section h3 {
+            color: white;
+            border-bottom: 2px solid white;
+        }
+        .contact-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ff69b4;
+            text-decoration: none;
+            padding: 10px 20px;
+            background: rgba(255, 20, 147, 0.2);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            border: 1px solid #ff1493;
+        }
+        .contact-link:hover {
+            background: rgba(255, 20, 147, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 20, 147, 0.4);
+        }
+        .project-details {
+            margin-top: 30px;
+        }
+        .project-details ul {
+            color: #d0d0d0;
+        }
+        .project-details p {
+            color: #d0d0d0;
+        }
+        .success-icon {
+            color: #ff1493;
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255, 20, 147, 0.8);
+        }   margin-top: 30px;
+        }
+        .success-icon {
+            color: #10b981;
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            h2 {
+                font-size: 1.5em;
+            }
+            .profile-section {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="success-icon">✓</div>
+            <h1>AWS Learning Project</h1>
+            <div class="learning-badge">🎓 Learning in Progress</div>
+        </div>
+
+        <div class="profile-section">
+            <img src="https://learning-on-aws-bucket-demo.s3.us-east-1.amazonaws.com/ec2tutorials/profile.jpg" alt="Picture of Desiree M" class="profile-image" onerror="this.style.display='none'">
+            <div class="profile-info">
+                <h2>HerDevWorks by Desiree M</h2>
+                <p style="font-size: 1.1em; color: #666; line-height: 1.6;">
+                    Welcome to my AWS learning journey! This web server is part of my hands-on experience 
+                    with cloud infrastructure, demonstrating my ability to deploy and manage EC2 instances, 
+                    VPCs, and automated deployments using Infrastructure as Code.
+                </p>
+            </div>
+        </div>
+
+        <div class="project-details">
+            <h3>📚 What I'm Learning</h3>
+            <div class="tech-badges">
+                <span class="badge">AWS EC2</span>
+                <span class="badge">VPC Networking</span>
+                <span class="badge">CloudFormation</span>
+                <span class="badge">Apache Web Server</span>
+                <span class="badge">Linux Administration</span>
+                <span class="badge">Security Groups</span>
+                <span class="badge">IAM Roles</span>
+                <span class="badge">Infrastructure as Code</span>
+            </div>
+
+            <h3>🚀 This Project Demonstrates</h3>
+            <ul style="list-style-position: inside; color: #666; line-height: 2;">
+                <li>Creating and configuring Virtual Private Clouds (VPCs)</li>
+                <li>Launching EC2 instances with user data scripts</li>
+                <li>Implementing security groups and IAM roles</li>
+                <li>Automating infrastructure deployment with CloudFormation</li>
+                <li>Setting up and configuring Apache web servers</li>
+                <li>Managing costs with AWS Free Tier resources</li>
+            </ul>
+
+            <div class="info-box">
+                <h3 style="margin-top: 0;">⚙️ Instance Information</h3>
+                <p><strong>Instance ID:</strong> <span id="instance-id">Loading...</span></p>
+                <p><strong>Availability Zone:</strong> <span id="az">Loading...</span></p>
+                <p><strong>Region:</strong> <span id="region">Loading...</span></p>
+                <p><strong>Instance Type:</strong> <span id="instance-type">Loading...</span></p>
+                <p><strong>Server:</strong> Apache HTTP Server on Amazon Linux 2023</p>
+                <p><strong>Deployment:</strong> AWS CloudFormation (Infrastructure as Code)</p>
+            </div>
+        </div>
+
+        <div class="contact-section">
+            <h3>📬 Get In Touch</h3>
+            <p style="margin-bottom: 20px;">
+                Software Developer. Always curious, always learning. Putting myself out there and finally documenting my learning.
+                Feel free to connect with me or check out my other projects!
+            </p>
+            <div class="contact-links">
+                <a href="mailto:techwithdesireem@gmail.com" class="contact-link">
+                    📧 techwithdesireem@gmail.com
+                </a>
+                <a href="https://github.com/techwithdesireem" target="_blank" class="contact-link">
+                    💻 GitHub: @techwithdesireem
+                </a>
+                <a href="https://linkedin.com/in/desireeMoeletsi" target="_blank" class="contact-link">
+                    💼 LinkedIn
+                </a>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; color: #999; font-size: 0.9em;">
+            <p>Deployed with ❤️ using AWS CloudFormation</p>
+            <p style="margin-top: 10px;">Free Tier Eligible | Cost-Optimized </p>
+        </div>
+    </div>
+
+    <script>
+        // Fetch instance metadata from AWS metadata service
+        const metadataBaseUrl = 'http://169.254.169.254/latest/meta-data/';
+        
+        async function fetchMetadata(endpoint, elementId) {
+            try {
+                const response = await fetch(metadataBaseUrl + endpoint);
+                const data = await response.text();
+                document.getElementById(elementId).textContent = data;
+            } catch (error) {
+                document.getElementById(elementId).textContent = 'Unable to fetch';
+            }
+        }
+        
+        // Fetch all metadata
+        fetchMetadata('instance-id', 'instance-id');
+        fetchMetadata('placement/availability-zone', 'az');
+        fetchMetadata('placement/region', 'region');
+        fetchMetadata('instance-type', 'instance-type');
+    </script>
+</body>
+</html>

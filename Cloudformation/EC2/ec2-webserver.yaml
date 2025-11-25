@@ -1,0 +1,234 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Free tier EC2 web server with Apache in existing VPC'
+
+Parameters:
+  VPCStackName:
+    Description: Name of the VPC CloudFormation stack to import values from
+    Type: String
+    Default: my-vpc-stack
+
+  InstanceType:
+    Description: EC2 instance type (free tier eligible)
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t3.micro
+
+  LatestAmiId:
+    Description: Latest Amazon Linux 2023 AMI (auto-populated)
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+  KeyPairName:
+    Description: EC2 Key Pair name for SSH access (leave empty if you don't have one)
+    Type: String
+    Default: ''
+
+  AllowSSHFrom:
+    Description: IP address range that can SSH to the instance (use your IP/32 for security)
+    Type: String
+    Default: 0.0.0.0/0
+    AllowedPattern: '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$'
+
+Conditions:
+  HasKeyPair: !Not [!Equals [!Ref KeyPairName, '']]
+
+Resources:
+  # Security Group for Web Server
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${AWS::StackName}-WebServer-SG
+      GroupDescription: Security group for Apache web server
+      VpcId:
+        Fn::ImportValue: !Sub ${VPCStackName}-VPC-ID
+      SecurityGroupIngress:
+        # Allow HTTP from anywhere
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTP traffic from internet
+        # Allow HTTPS from anywhere
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTPS traffic from internet
+        # Allow SSH from specified IP range
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AllowSSHFrom
+          Description: Allow SSH access
+      SecurityGroupEgress:
+        # Allow all outbound traffic
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-WebServer-SG
+
+  # EC2 Instance
+  WebServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref LatestAmiId
+      KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref 'AWS::NoValue']
+      SubnetId:
+        Fn::ImportValue: !Sub ${VPCStackName}-Public-Subnet-1
+      SecurityGroupIds:
+        - !Ref WebServerSecurityGroup
+      IamInstanceProfile: !Ref WebServerInstanceProfile
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          # Update system packages
+          yum update -y
+          
+          # Install Apache web server
+          yum install -y httpd
+          
+          # Start Apache service
+          systemctl start httpd
+          systemctl enable httpd
+          
+          # Download the HTML page from GitHub
+          cd /var/www/html
+          curl -o index.html https://raw.githubusercontent.com/techwithdesireem/Learning-On-AWS/main/Cloudformation/EC2/index.html
+          
+          # Note: Profile image is served directly from S3, no need to download
+          
+          # Fallback: Create simple HTML page if download fails
+          if [ ! -f index.html ]; then
+            cat > /var/www/html/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Download Failed</title>
+              <style>
+                  body {
+                      font-family: Arial, sans-serif;
+                      background: #0a0a0a;
+                      color: #ff1493;
+                      display: flex;
+                      justify-content: center;
+                      align-items: center;
+                      min-height: 100vh;
+                      margin: 0;
+                      padding: 20px;
+                      text-align: center;
+                  }
+                  .container {
+                      background: #1a1a1a;
+                      border: 2px solid #ff1493;
+                      border-radius: 10px;
+                      padding: 40px;
+                      max-width: 600px;
+                  }
+                  h1 {
+                      font-size: 2em;
+                      margin-bottom: 20px;
+                  }
+                  p {
+                      color: #d0d0d0;
+                      line-height: 1.6;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <h1>⚠️ Download Failed</h1>
+                  <p>The web page could not be downloaded from GitHub.</p>
+                  <p>The Apache web server is running successfully, but the content failed to load.</p>
+              </div>
+          </body>
+          </html>
+          EOF
+          fi
+          
+          # Set proper permissions
+          chown -R apache:apache /var/www/html
+          chmod -R 755 /var/www/html
+          
+          # Log completion
+          echo "Web server setup completed at $(date)" >> /var/log/webserver-setup.log
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-WebServer
+        - Key: Environment
+          Value: Development
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # IAM Role for EC2 Instance
+  WebServerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-WebServer-Role
+
+  # Instance Profile
+  WebServerInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref WebServerRole
+
+Outputs:
+  InstanceId:
+    Description: EC2 Instance ID
+    Value: !Ref WebServerInstance
+    Export:
+      Name: !Sub ${AWS::StackName}-Instance-ID
+
+  PublicIP:
+    Description: Public IP address of the web server
+    Value: !GetAtt WebServerInstance.PublicIp
+    Export:
+      Name: !Sub ${AWS::StackName}-Public-IP
+
+  PublicDNS:
+    Description: Public DNS name of the web server
+    Value: !GetAtt WebServerInstance.PublicDnsName
+    Export:
+      Name: !Sub ${AWS::StackName}-Public-DNS
+
+  WebsiteURL:
+    Description: URL to access the website
+    Value: !Sub http://${WebServerInstance.PublicDnsName}
+
+  SecurityGroupId:
+    Description: Security Group ID
+    Value: !Ref WebServerSecurityGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-SG-ID
+
+  SSHCommand:
+    Condition: HasKeyPair
+    Description: SSH command to connect to the instance
+    Value: !Sub ssh -i ${KeyPairName}.pem ec2-user@${WebServerInstance.PublicIp}
+
+  InstanceType:
+    Description: Instance type used
+    Value: !Ref InstanceType
+
+  EstimatedMonthlyCost:
+    Description: Estimated monthly cost
+    Value: '$0 (Free tier: 750 hours/month of t2.micro)'
