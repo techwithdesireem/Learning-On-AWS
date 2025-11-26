@@ -213,20 +213,6 @@ aws ec2 run-instances \
   --associate-public-ip-address
 ```
 
----
-
-## Best Practices
-
-1. **Tag everything** - Use consistent tagging for cost tracking
-2. **Use separate stacks** - One VPC per environment (dev, staging, prod)
-3. **Enable flow logs** - Add VPC Flow Logs (cost - skipped for now)
-4. **Plan your CIDR** - Ensure enough IP addresses for growth (this is for learning purposes hence the default should be enough)
-5. **Use NAT Gateway in production** - Enable for true private subnet isolation
-6. **Regular backups** - Export your CloudFormation template regularly
-7. **Test updates** - Always validate changes in dev before updating prod
-
----
-
 ## References
 
 - [AWS VPC Documentation](https://docs.aws.amazon.com/vpc/)
