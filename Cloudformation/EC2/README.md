@@ -145,32 +145,31 @@ aws s3api put-bucket-policy --bucket learning-on-aws-bucket-demo --policy '{
 
 # 1. Right-click the template file and select "Deploy CloudFormation Stack"
 ```
-![AWS Toolkit - Deploy CloudFormation Stack](./img/deploy-step1.png)
+![AWS Toolkit - Deploy CloudFormation Stack](./img/image-1.png)
 
 ```powershell
 # 2. Select your AWS region and S3 bucket for artifacts
 ```
-![AWS Toolkit - Select Region and Bucket](./img/deploy-step2.png)
 
 ```powershell
 # 3. Enter stack parameters when prompted (VPCStackName, KeyPairName, etc.)
 ```
-![AWS Toolkit - Enter Parameters](./img/deploy-step3.png)
+![AWS Toolkit - Enter Parameters](./img/image-2.png)
 
 ```powershell
 # 4. Review the changeset and click "Deploy Changes"
 ```
-![AWS Toolkit - Review Changeset](./img/deploy-step4.png)
+![AWS Toolkit - Review Changeset](./img/image-3.png)
 
 ```powershell
 # 5. Monitor progress in the AWS Toolkit panel (Resources, Events, Outputs tabs)
 ```
-![AWS Toolkit - Monitor Progress](./img/deploy-step5.png)
+![AWS Toolkit - Monitor Progress](./img/image-4.png)
 
 ```powershell
 # 6. Once complete, find the WebsiteURL in the Outputs tab
 ```
-![AWS Toolkit - View Outputs](./img/deploy-step6.png)
+![AWS Toolkit - View Outputs](./img/image-5.png)
 
 ```powershell
 # Option 2: Using AWS CLI
@@ -185,20 +184,7 @@ aws cloudformation create-stack `
 **Note:** The AWS Toolkit provides a superior deployment experience with real-time validation, visual changeset review, and integrated stack management directly in VS Code. I am a fan and it has made my experience of AWS so much better
 
 You can also visualize your infrastructure in VS Code (Check top right hand for an icon for Infrastructure Composer)
-![alt text](image-7.png)
-
-### **Step 4: Wait for Completion**
-```powershell
-aws cloudformation wait stack-create-complete --stack-name my-webserver
-```
-
-### **Step 5: Get Website URL**
-```powershell
-aws cloudformation describe-stacks `
-  --stack-name my-webserver `
-  --query 'Stacks[0].Outputs[?OutputKey==`WebsiteURL`].OutputValue' `
-  --output text
-```
+![AWS Infrastructure Compser](./img/image-7.png)
 
 ## 📝 Architecture Overview
 
@@ -361,6 +347,9 @@ aws s3 cp new-profile.jpg `
 ## 🗑️ Cleanup
 
 ### **Delete Stack**
+
+![AWS Delete Stack ](./img/image-6.png)
+
 ```powershell
 aws cloudformation delete-stack --stack-name my-webserver
 aws cloudformation wait stack-delete-complete --stack-name my-webserver
