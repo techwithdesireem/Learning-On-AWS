@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Free tier EC2 web server with Apache in existing VPC'
+Description: Free tier EC2 web server with Apache in existing VPC
 
 Parameters:
   VPCStackName:
@@ -8,12 +8,12 @@ Parameters:
     Default: my-vpc-stack
 
   InstanceType:
-    Description: EC2 instance type (free tier eligible)
+    Description: EC2 instance type
     Type: String
-    Default: t2.micro
+    Default: t3.micro
     AllowedValues:
-      - t2.micro
       - t3.micro
+      - t3.small
 
   LatestAmiId:
     Description: Latest Amazon Linux 2023 AMI (auto-populated)
@@ -29,10 +29,13 @@ Parameters:
     Description: IP address range that can SSH to the instance (use your IP/32 for security)
     Type: String
     Default: 0.0.0.0/0
-    AllowedPattern: '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$'
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
 
 Conditions:
-  HasKeyPair: !Not [!Equals [!Ref KeyPairName, '']]
+  HasKeyPair: !Not
+    - !Equals
+      - !Ref KeyPairName
+      - ''
 
 Resources:
   # Security Group for Web Server
@@ -41,8 +44,8 @@ Resources:
     Properties:
       GroupName: !Sub ${AWS::StackName}-WebServer-SG
       GroupDescription: Security group for Apache web server
-      VpcId:
-        Fn::ImportValue: !Sub ${VPCStackName}-VPC-ID
+      VpcId: !ImportValue
+        Fn::Sub: ${VPCStackName}-VPC-ID
       SecurityGroupIngress:
         # Allow HTTP from anywhere
         - IpProtocol: tcp
@@ -77,31 +80,32 @@ Resources:
     Properties:
       InstanceType: !Ref InstanceType
       ImageId: !Ref LatestAmiId
-      KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref 'AWS::NoValue']
-      SubnetId:
-        Fn::ImportValue: !Sub ${VPCStackName}-Public-Subnet-1
+      KeyName: !If
+        - HasKeyPair
+        - !Ref KeyPairName
+        - !Ref AWS::NoValue
+      SubnetId: !ImportValue
+        Fn::Sub: ${VPCStackName}-Public-Subnet-1
       SecurityGroupIds:
         - !Ref WebServerSecurityGroup
       IamInstanceProfile: !Ref WebServerInstanceProfile
-      UserData:
-        Fn::Base64: !Sub |
+      UserData: !Base64
+        Fn::Sub: |
           #!/bin/bash
           # Update system packages
           yum update -y
-          
+
           # Install Apache web server
           yum install -y httpd
-          
+
           # Start Apache service
           systemctl start httpd
           systemctl enable httpd
-          
-          # Download the HTML page from GitHub
+
+          # Download the HTML page from S3 bucket
           cd /var/www/html
-          curl -o index.html https://raw.githubusercontent.com/techwithdesireem/Learning-On-AWS/main/Cloudformation/EC2/index.html
-          
-          # Note: Profile image is served directly from S3, no need to download
-          
+          aws s3 cp s3://learning-on-aws-bucket-demo/ec2tutorials/index.html index.html
+
           # Fallback: Create simple HTML page if download fails
           if [ ! -f index.html ]; then
             cat > /var/www/html/index.html << 'EOF'
@@ -151,11 +155,11 @@ Resources:
           </html>
           EOF
           fi
-          
+
           # Set proper permissions
           chown -R apache:apache /var/www/html
           chmod -R 755 /var/www/html
-          
+
           # Log completion
           echo "Web server setup completed at $(date)" >> /var/log/webserver-setup.log
       Tags:
@@ -180,6 +184,18 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: S3ReadAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - arn:aws:s3:::learning-on-aws-bucket-demo
+                  - arn:aws:s3:::learning-on-aws-bucket-demo/*
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-WebServer-Role
