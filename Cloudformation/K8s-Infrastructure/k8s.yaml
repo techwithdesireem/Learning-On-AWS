@@ -1,0 +1,264 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Kubernetes Infrastructure on EC2 Intances - A master node and two worker nodes
+
+Parameters:
+  VPCStackName:
+    Description: Name of the VPC CloudFormation stack to import values from
+    Type: String
+    Default: my-vpc-stack
+
+  WorkerNodesInstanceType:
+    Description: EC2 instance type for worker nodes
+    Type: String
+    Default: t3.micro
+    AllowedValues:
+      - t3.micro
+      - t3.small
+
+  ControlPlaneInstanceType:
+    Description: EC2 instance type for control plane node
+    Type: String
+    Default: t3.small
+    AllowedValues:
+      - t3.small
+
+  LatestAmiId:
+    Description: Latest Ubuntu AMI
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/focal/stable/current/amd64/hvm/ebs-gp2/ami-id
+
+  WorkerNodesCount:
+    Description: Number of worker nodes
+    Type: Number
+    Default: 2
+
+  KeyPairName:
+    Description: EC2 Key Pair name for SSH access (leave empty if you don't have one)
+    Type: String
+    Default: k8s-admin
+
+  AllowSSHFrom:
+    Description: IP address range that can SSH to the instance (use your IP/32 for security)
+    Type: String
+    Default: 0.0.0.0/0
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+
+Conditions:
+  HasKeyPair: !Not
+    - !Equals
+      - !Ref KeyPairName
+      - ''
+
+Resources:
+  # IAM Role for Control Plane Instance
+  ControlPlaneRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${AWS::StackName}-ControlPlane-Role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ControlPlane-Role
+
+  # IAM Instance Profile for Control Plane
+  ControlPlaneInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub ${AWS::StackName}-ControlPlane-Profile
+      Roles:
+        - !Ref ControlPlaneRole
+
+  # IAM Role for Worker Nodes
+  WorkerNodeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${AWS::StackName}-WorkerNode-Role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-WorkerNode-Role
+
+  # IAM Instance Profile for Worker Nodes
+  WorkerNodeInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub ${AWS::StackName}-WorkerNode-Profile
+      Roles:
+        - !Ref WorkerNodeRole
+
+  # Security Group for the control plane node
+  ControlPlaneSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH and Custom TCP access to control plane node
+      VpcId: !ImportValue
+        Fn::Sub: ${VPCStackName}-VPC-ID
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AllowSSHFrom
+
+        - IpProtocol: tcp
+          FromPort: 10248
+          ToPort: 10260
+          CidrIp: !ImportValue
+            Fn::Sub: ${VPCStackName}-VPC-CIDR
+
+        - IpProtocol: tcp
+          FromPort: 2379
+          ToPort: 2380
+          CidrIp: !ImportValue
+            Fn::Sub: ${VPCStackName}-VPC-CIDR
+
+        - IpProtocol: tcp
+          FromPort: 6443
+          ToPort: 6443
+          CidrIp: !ImportValue
+            Fn::Sub: ${VPCStackName}-VPC-CIDR
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-WebServer-SG
+
+  # Security Group for the worker nodes
+  WorkerNodeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable Custom TCP access to worker nodes
+      VpcId: !ImportValue
+        Fn::Sub: ${VPCStackName}-VPC-ID
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AllowSSHFrom
+
+        - IpProtocol: tcp
+          FromPort: 10256
+          ToPort: 10256
+          CidrIp: !ImportValue
+            Fn::Sub: ${VPCStackName}-VPC-CIDR
+
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 32767
+          CidrIp: !ImportValue
+            Fn::Sub: ${VPCStackName}-VPC-CIDR
+
+        - IpProtocol: tcp
+          FromPort: 10250
+          ToPort: 10250
+          CidrIp: !ImportValue
+            Fn::Sub: ${VPCStackName}-VPC-CIDR
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-WebServer-SG
+
+  # Control Plane Instance
+  ControlPlaneInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref ControlPlaneInstanceType
+      ImageId: !Ref LatestAmiId
+      IamInstanceProfile: !Ref ControlPlaneInstanceProfile
+      KeyName: !If
+        - HasKeyPair
+        - !Ref KeyPairName
+        - !Ref AWS::NoValue
+      SubnetId: !ImportValue
+        Fn::Sub: ${VPCStackName}-Public-Subnet-1
+      SecurityGroupIds:
+        - !Ref ControlPlaneSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ControlPlane
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # Launch Template for Worker Nodes
+  WorkerNodeLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub ${AWS::StackName}-WorkerNode-LaunchTemplate
+      LaunchTemplateData:
+        InstanceType: !Ref WorkerNodesInstanceType
+        ImageId: !Ref LatestAmiId
+        IamInstanceProfile:
+          Arn: !GetAtt WorkerNodeInstanceProfile.Arn
+        KeyName: !If
+          - HasKeyPair
+          - !Ref KeyPairName
+          - !Ref AWS::NoValue
+        SecurityGroupIds:
+          - !Ref WorkerNodeSecurityGroup
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub ${AWS::StackName}-WorkerNode
+              - Key: ManagedBy
+                Value: CloudFormation
+              - Key: Role
+                Value: K8sWorker
+
+  # Auto Scaling Group for Worker Nodes
+  WorkerNodeAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: !Sub ${AWS::StackName}-WorkerNodes-ASG
+      LaunchTemplate:
+        LaunchTemplateId: !Ref WorkerNodeLaunchTemplate
+        Version: !GetAtt WorkerNodeLaunchTemplate.LatestVersionNumber
+      MinSize: !Ref WorkerNodesCount
+      MaxSize: !Ref WorkerNodesCount
+      DesiredCapacity: !Ref WorkerNodesCount
+      VPCZoneIdentifier:
+        - !ImportValue
+          Fn::Sub: ${VPCStackName}-Public-Subnet-1
+        - !ImportValue
+          Fn::Sub: ${VPCStackName}-Public-Subnet-2
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-WorkerNode
+          PropagateAtLaunch: true
+        - Key: ManagedBy
+          Value: CloudFormation
+          PropagateAtLaunch: true
+        - Key: Role
+          Value: K8sWorker
+          PropagateAtLaunch: true
+
+Outputs:
+  ControlPlanePublicIP:
+    Description: Public IP of the Control Plane node
+    Value: !GetAtt ControlPlaneInstance.PublicIp
+    Export:
+      Name: !Sub ${AWS::StackName}-ControlPlane-PublicIP
+
+  ControlPlanePublicDNS:
+    Description: Public DNS name of the Control Plane node
+    Value: !GetAtt ControlPlaneInstance.PublicDnsName
+    Export:
+      Name: !Sub ${AWS::StackName}-ControlPlane-PublicDNS
+
+  WorkerNodeAutoScalingGroupName:
+    Description: Auto Scaling Group name for Worker Nodes (use AWS CLI to get instance IDs)
+    Value: !Ref WorkerNodeAutoScalingGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-WorkerNodes-ASG-Name
